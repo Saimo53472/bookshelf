@@ -5,8 +5,9 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
-      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql
+      - pgdata:/var/lib/postgresql/data # volume to keep data outside the container
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/schema.sql # If the database is empty (first start), it runs every script in that folder, which is how the tables get created automatically.
+      # Chnaging the schema requires down -v.
 
 volumes:
   pgdata:

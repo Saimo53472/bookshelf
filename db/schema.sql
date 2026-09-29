@@ -22,9 +22,9 @@ CREATE TABLE books (
 -- One review per user per book: rating is required, text is optional
 CREATE TABLE reviews (
     id         SERIAL PRIMARY KEY,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    book_id    INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE,
-    rating     SMALLINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, -- deletes the rows from the child table automatically (reviews),
+    book_id    INTEGER NOT NULL REFERENCES books(id) ON DELETE CASCADE, -- when the rows from the parent table (users/books) are deleted
+    rating     NUMERIC(3,2) NOT NULL CHECK (rating BETWEEN 0.01 AND 5), -- rating allowing decimals 
     body       TEXT CHECK (char_length(body) <= 5000),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -34,7 +34,7 @@ CREATE TABLE reviews (
 CREATE INDEX idx_reviews_book ON reviews(book_id, created_at DESC);
 
 -- Personal shelf
-CREATE TYPE shelf_status AS ENUM ('want_to_read', 'reading', 'read');
+CREATE TYPE shelf_status AS ENUM ('tbr', 'reading', 'read');
 
 CREATE TABLE user_books (
     user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -45,7 +45,3 @@ CREATE TABLE user_books (
 );
 
 CREATE INDEX idx_user_books_status ON user_books(user_id, status);
-
--- Example: average rating and review count for a book
--- SELECT AVG(rating)::numeric(3,2) AS avg_rating, COUNT(*) AS review_count
--- FROM reviews WHERE book_id = $1;
