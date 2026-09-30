@@ -1,23 +1,39 @@
-import { Router } from "express";
+import { Router, Response } from "express";
 import { z } from "zod";
 import { pool } from "../db";
-import { searchBooks, getBook } from "../services/openLibrary";
+import { searchBooks } from "../services/openLibrary";
+import { ensureBook } from "../services/books";
+import { requireAuth } from "../middleware/auth";
 
 export const booksRouter = Router();
 
+const olIdSchema = z.string().regex(/^OL\d+W$/);
+
+// Loads the book, or sends the right error response and returns null
+async function loadBook(olId: string, res: Response) {
+  try {
+    const book = await ensureBook(olId);
+    if (!book) res.status(404).json({ error: "Book not found" });
+    return book;
+  } catch (err) {
+    console.error("Open Library lookup failed:", err);
+    res.status(502).json({ error: "Book lookup is temporarily unavailable" });
+    return null;
+  }
+}
+
+// Search
 const searchSchema = z.object({
   q: z.string().trim().min(1).max(100),
   page: z.coerce.number().int().min(1).max(100).default(1),
 });
 
-// This route must be defined BEFORE "/:olId", or "search" would be treated as an id.
 booksRouter.get("/search", async (req, res) => {
   const parsed = searchSchema.safeParse(req.query);
   if (!parsed.success) {
     res.status(400).json({ error: "Invalid search", details: parsed.error.issues });
     return;
   }
-
   try {
     res.json(await searchBooks(parsed.data.q, parsed.data.page));
   } catch (err) {
@@ -26,49 +42,17 @@ booksRouter.get("/search", async (req, res) => {
   }
 });
 
-const olIdSchema = z.string().regex(/^OL\d+W$/);
-
+// Book details
 booksRouter.get("/:olId", async (req, res) => {
   const idParsed = olIdSchema.safeParse(req.params.olId);
   if (!idParsed.success) {
     res.status(400).json({ error: "Invalid book id" });
     return;
   }
-  const olId = idParsed.data;
 
-  // 1. Do we already have this book?
-  const cached = await pool.query(
-    "SELECT id, ol_id, title, authors, cover_id, first_year FROM books WHERE ol_id = $1",
-    [olId]
-  );
-  let book = cached.rows[0];
+  const book = await loadBook(idParsed.data, res);
+  if (!book) return;
 
-  // 2. If not, fetch it from Open Library and save it
-  if (!book) {
-    let fetched;
-    try {
-      fetched = await getBook(olId);
-    } catch (err) {
-      console.error("Open Library lookup failed:", err);
-      res.status(502).json({ error: "Book lookup is temporarily unavailable" });
-      return;
-    }
-    if (!fetched) {
-      res.status(404).json({ error: "Book not found" });
-      return;
-    }
-
-    const inserted = await pool.query(
-      `INSERT INTO books (ol_id, title, authors, cover_id, first_year)
-       VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT (ol_id) DO UPDATE SET title = EXCLUDED.title
-       RETURNING id, ol_id, title, authors, cover_id, first_year`,
-      [fetched.olId, fetched.title, fetched.authors, fetched.coverId, fetched.firstYear]
-    );
-    book = inserted.rows[0];
-  }
-
-  // 3. Rating stats (the casts make pg return real numbers instead of strings)
   const stats = await pool.query(
     `SELECT AVG(rating)::float AS avg_rating, COUNT(*)::int AS review_count
      FROM reviews WHERE book_id = $1`,
@@ -81,7 +65,134 @@ booksRouter.get("/:olId", async (req, res) => {
     authors: book.authors,
     coverId: book.cover_id,
     firstYear: book.first_year,
-    avgRating: stats.rows[0].avg_rating, // null until someone rates it
+    avgRating: stats.rows[0].avg_rating,
     reviewCount: stats.rows[0].review_count,
   });
+});
+
+// Reviews
+const reviewSchema = z.object({
+  rating: z
+    .number()
+    .min(0)
+    .max(5)
+    .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, "At most 2 decimal places"),
+  body: z
+    .string()
+    .trim()
+    .max(5000)
+    .optional()
+    .transform((v) => (v ? v : null)), // empty text is stored as NULL
+});
+
+// Public: everyone's reviews for a book, newest first
+const pageSchema = z.object({
+  page: z.coerce.number().int().min(1).max(1000).default(1),
+});
+
+booksRouter.get("/:olId/reviews", async (req, res) => {
+  const idParsed = olIdSchema.safeParse(req.params.olId);
+  const pageParsed = pageSchema.safeParse(req.query);
+  if (!idParsed.success || !pageParsed.success) {
+    res.status(400).json({ error: "Invalid request" });
+    return;
+  }
+  const limit = 10;
+  const offset = (pageParsed.data.page - 1) * limit;
+
+  const [rows, count] = await Promise.all([
+    pool.query(
+      `SELECT r.id, r.rating::float AS rating, r.body, r.created_at, r.updated_at,
+              u.username
+       FROM reviews r
+       JOIN users u ON u.id = r.user_id
+       JOIN books b ON b.id = r.book_id
+       WHERE b.ol_id = $1
+       ORDER BY r.created_at DESC
+       LIMIT $2 OFFSET $3`,
+      [idParsed.data, limit, offset]
+    ),
+    pool.query(
+      `SELECT COUNT(*)::int AS total
+       FROM reviews r JOIN books b ON b.id = r.book_id
+       WHERE b.ol_id = $1`,
+      [idParsed.data]
+    ),
+  ]);
+
+  res.json({
+    page: pageParsed.data.page,
+    total: count.rows[0].total,
+    reviews: rows.rows,
+  });
+});
+
+// Private: my own review of this book
+booksRouter.get("/:olId/review", requireAuth, async (req, res) => {
+  const idParsed = olIdSchema.safeParse(req.params.olId);
+  if (!idParsed.success) {
+    res.status(400).json({ error: "Invalid book id" });
+    return;
+  }
+
+  const result = await pool.query(
+    `SELECT r.id, r.rating::float AS rating, r.body, r.created_at, r.updated_at
+     FROM reviews r JOIN books b ON b.id = r.book_id
+     WHERE r.user_id = $1 AND b.ol_id = $2`,
+    [req.userId, idParsed.data]
+  );
+  if (result.rows.length === 0) {
+    res.status(404).json({ error: "You haven't reviewed this book" });
+    return;
+  }
+  res.json(result.rows[0]);
+});
+
+// Private: create or update my review
+booksRouter.put("/:olId/review", requireAuth, async (req, res) => {
+  const idParsed = olIdSchema.safeParse(req.params.olId);
+  if (!idParsed.success) {
+    res.status(400).json({ error: "Invalid book id" });
+    return;
+  }
+  const bodyParsed = reviewSchema.safeParse(req.body);
+  if (!bodyParsed.success) {
+    res.status(400).json({ error: "Invalid review", details: bodyParsed.error.issues });
+    return;
+  }
+
+  const book = await loadBook(idParsed.data, res);
+  if (!book) return;
+
+  const { rating, body } = bodyParsed.data;
+  const result = await pool.query(
+    `INSERT INTO reviews (user_id, book_id, rating, body)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (user_id, book_id)
+     DO UPDATE SET rating = EXCLUDED.rating, body = EXCLUDED.body, updated_at = now()
+     RETURNING id, rating::float AS rating, body, created_at, updated_at`,
+    [req.userId, book.id, rating, body]
+  );
+  res.json(result.rows[0]);
+});
+
+// Private: delete my review
+booksRouter.delete("/:olId/review", requireAuth, async (req, res) => {
+  const idParsed = olIdSchema.safeParse(req.params.olId);
+  if (!idParsed.success) {
+    res.status(400).json({ error: "Invalid book id" });
+    return;
+  }
+
+  const result = await pool.query(
+    `DELETE FROM reviews
+     WHERE user_id = $1
+       AND book_id = (SELECT id FROM books WHERE ol_id = $2)`,
+    [req.userId, idParsed.data]
+  );
+  if (result.rowCount === 0) {
+    res.status(404).json({ error: "You haven't reviewed this book" });
+    return;
+  }
+  res.status(204).end();
 });
