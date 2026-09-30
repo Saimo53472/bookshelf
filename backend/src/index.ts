@@ -5,6 +5,7 @@ import {authRouter} from "./routes/auth"
 import cookieParser from "cookie-parser";
 import { requireAuth } from "./middleware/auth";
 import { booksRouter } from "./routes/books";
+import { shelfRouter } from "./routes/shelf";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not set");
@@ -15,6 +16,7 @@ app.use(express.json());
 app.use(cookieParser()); // register the cookie parser
 app.use("/api/auth", authRouter); // The route is now reachable at POST /api/auth/register
 app.use("/api/books", booksRouter);
+app.use("/api/me/shelf", shelfRouter);
 
 app.get("/api/health", async (_req, res) => { // verify chain
   const result = await pool.query("SELECT now() AS time");

@@ -1,26 +1,11 @@
-import { Router, Response } from "express";
+import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../db";
 import { searchBooks } from "../services/openLibrary";
-import { ensureBook } from "../services/books";
 import { requireAuth } from "../middleware/auth";
+import { olIdSchema, loadBook } from "./shared";
 
 export const booksRouter = Router();
-
-const olIdSchema = z.string().regex(/^OL\d+W$/);
-
-// Loads the book, or sends the right error response and returns null
-async function loadBook(olId: string, res: Response) {
-  try {
-    const book = await ensureBook(olId);
-    if (!book) res.status(404).json({ error: "Book not found" });
-    return book;
-  } catch (err) {
-    console.error("Open Library lookup failed:", err);
-    res.status(502).json({ error: "Book lookup is temporarily unavailable" });
-    return null;
-  }
-}
 
 // Search
 const searchSchema = z.object({
