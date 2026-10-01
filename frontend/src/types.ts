@@ -11,3 +11,9 @@ export interface SearchResponse {
   page: number;
   results: BookSummary[];
 }
+
+export interface User {
+  id: number;
+  email: string;
+  username: string;
+}

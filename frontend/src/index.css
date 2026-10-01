@@ -8,9 +8,6 @@
 body { margin: 0; }
 a { color: #2b5fd9; }
 
-.site-header { padding: 1rem 1.5rem; background: #1f2430; }
-.site-header a { color: #fff; font-weight: 700; text-decoration: none; font-size: 1.2rem; }
-
 main { max-width: 760px; margin: 0 auto; padding: 1.5rem; }
 
 .search-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
@@ -27,3 +24,21 @@ button:disabled { background: #a9b3c9; cursor: not-allowed; }
 .cover-placeholder { display: grid; place-items: center; font-size: 0.7rem; color: #6b6f7a; }
 
 .pagination { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 1.5rem; }
+
+.site-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: #1f2430;
+}
+.site-header a { color: #fff; text-decoration: none; }
+.site-header .brand { font-weight: 700; font-size: 1.2rem; }
+.site-header nav { display: flex; align-items: center; gap: 1rem; }
+
+.link-button { background: none; padding: 0; color: #c9d3ef; text-decoration: underline; }
+
+.auth-card { max-width: 380px; margin: 2rem auto; }
+.form { display: grid; gap: 1rem; }
+.form label { display: grid; gap: 0.3rem; font-weight: 600; }
+.form input { padding: 0.6rem 0.8rem; font-size: 1rem; border: 1px solid #c9c7c0; border-radius: 6px; font-weight: 400; }
