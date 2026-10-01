@@ -4,6 +4,7 @@ import { pool } from "../db";
 import { searchBooks } from "../services/openLibrary";
 import { requireAuth } from "../middleware/auth";
 import { olIdSchema, loadBook } from "./shared";
+import { reviewSchema } from "../schemas";
 
 export const booksRouter = Router();
 
@@ -53,21 +54,6 @@ booksRouter.get("/:olId", async (req, res) => {
     avgRating: stats.rows[0].avg_rating,
     reviewCount: stats.rows[0].review_count,
   });
-});
-
-// Reviews
-const reviewSchema = z.object({
-  rating: z
-    .number()
-    .min(0)
-    .max(5)
-    .refine((v) => Math.abs(v * 100 - Math.round(v * 100)) < 1e-6, "At most 2 decimal places"),
-  body: z
-    .string()
-    .trim()
-    .max(5000)
-    .optional()
-    .transform((v) => (v ? v : null)), // empty text is stored as NULL
 });
 
 // Public: everyone's reviews for a book, newest first

@@ -18,7 +18,7 @@ interface SearchDoc {
   first_publish_year?: number;
 }
 
-function toSummary(doc: SearchDoc): BookSummary {
+export function toSummary(doc: SearchDoc): BookSummary {
   return {
     olId: doc.key.replace("/works/", ""),
     title: doc.title,
