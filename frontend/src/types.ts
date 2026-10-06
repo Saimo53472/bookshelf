@@ -40,3 +40,17 @@ export interface ReviewsResponse {
   total: number;
   reviews: Review[];
 }
+
+export type ShelfStatus = "tbr" | "reading" | "read"; // must match the backend enum
+
+export interface ShelfBook extends BookSummary {
+  status: ShelfStatus;
+  myRating: number | null; // null if you haven't reviewed it
+  updatedAt: string;
+}
+
+export interface ShelfResponse {
+  page: number;
+  total: number;
+  books: ShelfBook[];
+}

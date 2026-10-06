@@ -6,6 +6,7 @@ import type { BookDetails } from "../types";
 import Stars from "../components/Stars";
 import ReviewForm from "../components/ReviewForm";
 import ReviewList from "../components/ReviewList";
+import ShelfControl from "../components/ShelfControl";
 
 // Wrapper: giving BookView a `key` resets all its state when you navigate to a different book
 export default function BookPage() {
@@ -74,6 +75,7 @@ function BookView({ olId }: { olId: string }) {
           ) : (
             <p className="muted">No ratings yet</p>
           )}
+          {!authLoading && user && <ShelfControl olId={olId} />}
         </div>
       </article>
 

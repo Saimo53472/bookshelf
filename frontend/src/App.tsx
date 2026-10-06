@@ -6,6 +6,7 @@ import BookPage from "./pages/BookPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import AccountPage from "./pages/AccountPage";
+import ShelfPage from "./pages/ShelfPage";
 
 function Header() {
   const { user, loading, logout } = useAuth();
@@ -18,6 +19,7 @@ function Header() {
       <nav>
         {loading ? null : user ? (
           <>
+            <Link to="/shelf">My shelf</Link>
             <Link to="/account">{user.username}</Link>
             <button className="link-button" onClick={() => void logout()}>
               Log out
@@ -44,6 +46,14 @@ export default function App() {
           <Route path="/books/:olId" element={<BookPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route
+            path="/shelf"
+            element={
+              <RequireAuth>
+                <ShelfPage />
+              </RequireAuth>
+            }
+          />
           <Route
             path="/account"
             element={
