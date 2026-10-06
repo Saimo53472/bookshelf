@@ -42,3 +42,22 @@ button:disabled { background: #a9b3c9; cursor: not-allowed; }
 .form { display: grid; gap: 1rem; }
 .form label { display: grid; gap: 0.3rem; font-weight: 600; }
 .form input { padding: 0.6rem 0.8rem; font-size: 1rem; border: 1px solid #c9c7c0; border-radius: 6px; font-weight: 400; }
+
+.book-header { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; }
+.cover-large { width: 160px; height: 240px; flex-shrink: 0; object-fit: cover; border-radius: 6px; background: #e6e4de; }
+.book-header h1 { margin: 0 0 0.3rem; }
+
+.stars { position: relative; display: inline-block; color: #d4d1c8; white-space: nowrap; }
+.stars-fill { position: absolute; left: 0; top: 0; overflow: hidden; color: #f2a900; }
+
+.form textarea { padding: 0.6rem 0.8rem; font-size: 1rem; font-family: inherit; border: 1px solid #c9c7c0; border-radius: 6px; font-weight: 400; resize: vertical; }
+.rating-row { display: flex; align-items: center; gap: 1rem; }
+.rating-row input { width: 120px; }
+.form-actions { display: flex; gap: 0.75rem; }
+button.danger { background: #b3261e; }
+.success { color: #1e7a3c; margin: 0; }
+
+.review-list { list-style: none; padding: 0; display: grid; gap: 0.75rem; }
+.review-card { padding: 0.75rem 1rem; background: #fff; border-radius: 8px; }
+.review-head { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
+.review-body { margin: 0.5rem 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
