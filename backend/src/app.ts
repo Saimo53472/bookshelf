@@ -8,6 +8,8 @@ import { authRouter } from "./routes/auth";
 import { booksRouter } from "./routes/books";
 import { shelfRouter } from "./routes/shelf";
 import { requireAuth } from "./middleware/auth";
+import path from "node:path";
+import fs from "node:fs";
 
 if (!process.env.JWT_SECRET) {
   throw new Error("JWT_SECRET is not set");
@@ -21,7 +23,17 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        "img-src": ["'self'", "data:", "https://covers.openlibrary.org", "https://*.archive.org"],
+        // Render serves everything over HTTPS anyway, and this directive breaks plain-http local testing
+        "upgrade-insecure-requests": null,
+      },
+    },
+  })
+);
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
@@ -71,6 +83,17 @@ app.get("/api/me", requireAuth, async (req, res) => {
   }
   res.json(result.rows[0]);
 });
+
+// frontend (only when the built files exist - in the Docker image)
+const clientDir = path.resolve(__dirname, "../public");
+if (fs.existsSync(clientDir)) {
+  app.use(express.static(clientDir));
+
+  // Any other GET that isn't an API call gets index.html
+  app.get(/^\/(?!api(?:\/|$)).*/, (_req, res) => {
+    res.sendFile(path.join(clientDir, "index.html"));
+  });
+}
 
 // Fallbacks
 app.use((_req, res) => {
