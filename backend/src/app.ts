@@ -23,6 +23,12 @@ if (process.env.NODE_ENV === "production") {
   app.set("trust proxy", 1);
 }
 
+// Lightweight liveness check for the hosting platform: no database, and outside /api
+// so it isn't rate limited
+app.get("/healthz", (_req, res) => {
+  res.json({ status: "ok" });
+});
+
 app.use(
   helmet({
     contentSecurityPolicy: {
