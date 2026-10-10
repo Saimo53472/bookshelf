@@ -55,6 +55,12 @@ export default function SearchPage() {
 
   return (
     <section>
+        {!q && (
+        <div className="hero">
+            <h1>What will you read next?</h1>
+            <p>Search by title or author, then rate it and add it to your shelf.</p>
+        </div>
+        )}
       <form onSubmit={onSubmit} className="search-form">
         <input
           value={input}
