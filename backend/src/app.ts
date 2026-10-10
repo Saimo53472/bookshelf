@@ -33,7 +33,13 @@ app.use(
   helmet({
     contentSecurityPolicy: {
       directives: {
-        "img-src": ["'self'", "data:", "https://covers.openlibrary.org", "https://*.archive.org"],
+        "img-src": [
+        "'self'",
+        "data:",
+        "https://covers.openlibrary.org",
+        "https://archive.org",
+        "https://*.archive.org",
+        ],
         // Render serves everything over HTTPS anyway, and this directive breaks plain-http local testing
         "upgrade-insecure-requests": null,
       },
